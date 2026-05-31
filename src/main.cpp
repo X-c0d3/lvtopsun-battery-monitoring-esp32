@@ -8,12 +8,10 @@
 #include <SocketIoClient.h>
 #include <arduino-timer.h>
 
-#include "LvtopsunBmsClient.h"  // Import คลาสโมดูลใหม่เข้าโปรเจกต์
+#include "LvtopsunBmsClient.h"
 #include "broadCastToClients.h"
-#include "models/BmsData.h"
-
-// #include "broadCastToClients.h"
 #include "esp_task_wdt.h"
+#include "models/BmsData.h"
 #include "utility.h"
 #include "wifiMan.h"
 #define RX_PIN 20
@@ -71,14 +69,13 @@ void loop() {
         esp_task_wdt_reset();
     }
 
-    // สั่งส่งสัญญาณรีเฟรชนำร่องทุก 2 วินาที (Non-blocking)
+    // send command to refresh every 2sec (Non-blocking)
     unsigned long currentMillis = millis();
     if (currentMillis - lastRefreshTime >= refreshInterval) {
         lastRefreshTime = currentMillis;
         bms.sendRefreshCommand();
     }
 
-    // ปล่อยให้ระบบคลาสจัดการจัดการรวบรวมบัฟเฟอร์สตริงดิบ
     if (bms.handleStream(bmsDataObj)) {
         // print response to console
         bms.printBmsConsole(bmsDataObj);
