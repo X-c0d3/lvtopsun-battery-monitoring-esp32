@@ -54,7 +54,7 @@ Example: JSON output
 ```
 
 <p float="center">
-<img src="https://github.com/X-c0d3/lvtopsun-battery-monitoring-esp32/blob/main/doc/image1.jpg?v=1"  width="ุ600">
+<img src="https://github.com/X-c0d3/lvtopsun-battery-monitoring-esp32/blob/main/doc/image1.jpg?v=2"  width="ุ600">
 <img src="https://github.com/X-c0d3/lvtopsun-battery-monitoring-esp32/blob/main/doc/image2.jpg"  width="ุ600">
 <img src="https://github.com/X-c0d3/lvtopsun-battery-monitoring-esp32/blob/main/doc/image3.jpg"  width="ุ600">
 </p>
