@@ -19,6 +19,7 @@ class BmsData {
     // Volt & Current
     float packVoltage = 0.0f;
     float current = 0.0f;
+    float energy = 0.0f;
 
     // Capacity & SoC
     float soc = 0.0f;
@@ -34,6 +35,9 @@ class BmsData {
     float cellTempDiff = 0.0f;
     float mosTemperature = 0.0f;
     float ambientTemperature = 0.0f;
+
+    bool isCharging = false;
+    bool isDischarging = false;
 
     // Cell Voltages (16 Cells)
     std::vector<float> cells;

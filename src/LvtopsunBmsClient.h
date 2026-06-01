@@ -151,6 +151,10 @@ class LvtopsunBmsClient {
             data.soc = (float)parseHexSub(rawStr, idx, 2);
             data.remainingAh = (data.fullAh * data.soc) / 100.0f;
 
+            data.isCharging = data.current > 0.1f;
+            data.isDischarging = data.current < -0.1f;
+            data.energy = data.current * data.packVoltage;
+
             data.isValid = true;
             return true;
 
