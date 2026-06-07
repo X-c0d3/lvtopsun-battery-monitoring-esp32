@@ -16,7 +16,7 @@
 #include "utility.h"
 #include "wifiMan.h"
 
-void publishToSocketIO(SocketIoClient& webSocket, BmsData data) {
+void publishToSocketIO(SocketIoClient& webSocket, const BmsData& data) {
     // https://arduinojson.org/v6/assistant/
     unsigned long startTime = micros();
     StaticJsonDocument<1024> root;

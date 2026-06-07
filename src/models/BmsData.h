@@ -20,6 +20,8 @@ class BmsData {
     float packVoltage = 0.0f;
     float current = 0.0f;
     float energy = 0.0f;
+    bool isCharging = false;
+    bool isDischarging = false;
 
     // Capacity & SoC
     float soc = 0.0f;
@@ -36,8 +38,7 @@ class BmsData {
     float mosTemperature = 0.0f;
     float ambientTemperature = 0.0f;
 
-    bool isCharging = false;
-    bool isDischarging = false;
+    String status = "";
 
     // Cell Voltages (16 Cells)
     std::vector<float> cells;
@@ -49,11 +50,15 @@ class BmsData {
         obj["isValid"] = isValid;
         obj["packVoltage"] = packVoltage;
         obj["current"] = current;
+        obj["energy"] = energy;
+        obj["isCharging"] = isCharging;
+        obj["isDischarging"] = isDischarging;
         obj["soc"] = soc;
         obj["remainingAh"] = remainingAh;
         obj["fullAh"] = fullAh;
         obj["designAh"] = designAh;
         obj["cycleCount"] = cycleCount;
+        obj["status"] = status;
 
         obj["maxCellTemp"] = maxCellTemp;
         obj["minCellTemp"] = minCellTemp;

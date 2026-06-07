@@ -17,7 +17,7 @@
 #define RX_PIN 20
 #define TX_PIN 21
 #define ESP32C3_LED 8  // Built-in LED
-#define WDT_TIMEOUT 60
+#define WDT_TIMEOUT 20
 
 HardwareSerial hwSerial(1);
 SocketIoClient webSocket;
@@ -76,12 +76,13 @@ void loop() {
         bms.sendRefreshCommand();
     }
 
-    if (bms.handleStream(bmsDataObj)) {
+    if (bms.handleStream(bmsDataObj) && bmsDataObj.isValid) {
         // print response to console
         bms.printBmsConsole(bmsDataObj);
 
         yield();
         digitalWrite(ESP32C3_LED, !digitalRead(ESP32C3_LED));
+        // publish message to SocketIO server or MQTT broker
         publishToSocketIO(webSocket, bmsDataObj);
     }
 

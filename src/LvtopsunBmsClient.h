@@ -23,6 +23,12 @@ class LvtopsunBmsClient {
     unsigned long lastDataTime = 0;
     const unsigned long rxTimeout = 200;
 
+    unsigned long lastSuccessTime = 0;
+    unsigned long lastWarnTime = 0;
+    bool isConnected = false;
+    const unsigned long connectionTimeout = 10000;
+    const unsigned long warnInterval = 10000;
+
     long parseHexSub(const String& str, int start, int length) {
         String sub = str.substring(start, start + length);
         return strtol(sub.c_str(), NULL, 16);
@@ -55,6 +61,8 @@ class LvtopsunBmsClient {
     bool connect() {
         serialPort.begin(baudRate, SERIAL_8N1, rxPin, txPin);
         Serial.println("LvtopsunBmsClient serial initialized");
+        lastSuccessTime = millis();
+        lastWarnTime = millis();
         return true;
     }
 
@@ -75,11 +83,39 @@ class LvtopsunBmsClient {
             lastDataTime = millis();
         }
 
-        if (rxBuffer.length() > 0 && (millis() - lastDataTime >= rxTimeout)) {
-            bool success = decodeTelemetry(rxBuffer, outData);
+        int startIdx = rxBuffer.indexOf('~');
+        if (startIdx != -1 && rxBuffer.length() > startIdx) {
+            if (millis() - lastDataTime >= rxTimeout) {
+                String validPacket = rxBuffer.substring(startIdx);
+                bool success = decodeTelemetry(validPacket, outData);
+                rxBuffer = "";
+
+                if (success) {
+                    lastSuccessTime = millis();
+                    if (!isConnected) {
+                        isConnected = true;
+                        Serial.println("\n🌐 [BMS Status] Connected successfully!");
+                    }
+                }
+                return success;
+            }
+        } else if (rxBuffer.length() > 0 && startIdx == -1) {
             rxBuffer = "";
-            return success;
         }
+
+        if (isConnected && (millis() - lastSuccessTime >= connectionTimeout)) {
+            isConnected = false;
+            outData.isValid = false;
+            Serial.println("\n⚠️ [BMS Status] Disconnected! (Lost connection to BMS - Check RS232 cable)");
+            return true;
+        }
+
+        if (!isConnected && (millis() - lastWarnTime >= warnInterval)) {
+            lastWarnTime = millis();
+            outData.isValid = false;
+            Serial.println("⏳ [BMS Status] Waiting for BMS connection... Please check RS232/Serial cable!");
+        }
+
         return false;
     }
 
@@ -99,6 +135,7 @@ class LvtopsunBmsClient {
 
             // 1. แกะแรงดันรายเซลล์
             int cellCount = parseHexSub(rawStr, idx, 2);
+            if (cellCount < 0 || cellCount > 24) return false;
             idx += 2;
 
             for (int i = 0; i < cellCount; i++) {
@@ -109,6 +146,7 @@ class LvtopsunBmsClient {
 
             // 2. แกะอุณหภูมิทั้งหมด 6 จุด
             int tempCount = parseHexSub(rawStr, idx, 2);
+            if (tempCount < 0 || tempCount > 10) return false;
             idx += 2;
 
             float rawTemps[6] = {0.0f};
@@ -117,15 +155,25 @@ class LvtopsunBmsClient {
                 idx += 4;
             }
 
-            for (int i = 0; i < 4; i++) {
+            for (int i = 0; i < tempCount && i < 4; i++) {
                 data.cellTemperatures.push_back(rawTemps[i]);
             }
             data.mosTemperature = rawTemps[4];
             data.ambientTemperature = rawTemps[5];
 
-            data.maxCellTemp = max(max(rawTemps[0], rawTemps[1]), max(rawTemps[2], rawTemps[3]));
-            data.minCellTemp = min(min(rawTemps[0], rawTemps[1]), min(rawTemps[2], rawTemps[3]));
-            data.cellTempDiff = data.maxCellTemp - data.minCellTemp;
+            if (!data.cellTemperatures.empty()) {
+                data.maxCellTemp = data.cellTemperatures[0];
+                data.minCellTemp = data.cellTemperatures[0];
+                for (float temp : data.cellTemperatures) {
+                    if (temp > data.maxCellTemp) data.maxCellTemp = temp;
+                    if (temp < data.minCellTemp) data.minCellTemp = temp;
+                }
+                data.cellTempDiff = data.maxCellTemp - data.minCellTemp;
+            } else {
+                data.maxCellTemp = 0.0f;
+                data.minCellTemp = 0.0f;
+                data.cellTempDiff = 0.0f;
+            }
 
             // 3. แกะกระแสไฟฟ้า และแรงดันไฟฟ้ารวม
             long currentRaw = parseHexSub(rawStr, idx, 4);
@@ -155,6 +203,14 @@ class LvtopsunBmsClient {
             data.isDischarging = data.current < -0.1f;
             data.energy = data.current * data.packVoltage;
 
+            if (data.current > 0.1f) {
+                data.status = "Charging";
+            } else if (data.current < -0.1f) {
+                data.status = "Discharging";
+            } else {
+                data.status = "Standby";
+            }
+
             data.isValid = true;
             return true;
 
@@ -173,6 +229,16 @@ class LvtopsunBmsClient {
         Serial.println("⚡ [LVTopsun BMS Telemetry Data - ONLINE]");
         Serial.println("======================================================");
 
+        Serial.printf("📊 Pack Voltage      : %.3f V\n", data.packVoltage);
+        Serial.printf("🔌 Current           : %.2f A\n", data.current);
+        Serial.printf("🔋 Battery Capacity  : %.2f Ah / %.2f Ah (Design: %.0f Ah)\n", data.remainingAh, data.fullAh, data.designAh);
+        Serial.printf("🔄 Battery SoC       : %.1f%% (Cycle Count: %ld รอบ)\n", data.soc, data.cycleCount);
+        Serial.println("⚡ isCharging        : " + String(data.isCharging == 1 ? "Yes" : "No"));
+        Serial.println("⚡ isDischarging     : " + String(data.isDischarging == 1 ? "Yes" : "No"));
+        Serial.printf("⚡ Energy            : %.2f W\n", data.energy);
+        Serial.println("⚡ Status            : " + data.status);
+
+        Serial.println("------------------------------------------------------");
         // แสดงผลแรงดันรายเซลล์แบบ Vector รองรับขนาดไดนามิก
         for (size_t i = 0; i < data.cells.size(); i++) {
             Serial.printf("🔋 Cell %02d : %.3f V\n", (i + 1), data.cells[i]);
@@ -190,17 +256,15 @@ class LvtopsunBmsClient {
 
         Serial.printf("🌡️  Max/Min Temp Diff : Max: %.1f°C | Min: %.1f°C | Diff: %.1f°C\n", data.maxCellTemp, data.minCellTemp, data.cellTempDiff);
         Serial.printf("🔥 MOS Temperature   : %.1f°C\n", data.mosTemperature);
-        Serial.printf("🌬️  Ambient Temp     : %.1f°C\n", data.ambientTemperature);
-        Serial.println("------------------------------------------------------");
+        Serial.printf("🌬️  Ambient Temp      : %.1f°C\n", data.ambientTemperature);
 
-        Serial.printf("📊 Pack Voltage      : %.3f V\n", data.packVoltage);
-        Serial.printf("🔌 Current           : %.2f A\n", data.current);
-        Serial.printf("🔋 Battery Capacity  : %.2f Ah / %.2f Ah (Design: %.0f Ah)\n", data.remainingAh, data.fullAh, data.designAh);
-        Serial.printf("🔄 Battery SoC       : %.1f%% (Cycle Count: %ld รอบ)\n", data.soc, data.cycleCount);
         Serial.println("======================================================");
 
         unsigned long elapsedTime = micros() - startTime;
-        Serial.println(" -------------- ElapsedTime " + formatDuration(elapsedTime) + " -------------- Last Update: " + DateNowString());
+        Serial.print(" -------------- ElapsedTime ");
+        Serial.print(formatDuration(elapsedTime));
+        Serial.print(" -------------- Last Update: ");
+        Serial.println(DateNowString());
     }
 };
 
