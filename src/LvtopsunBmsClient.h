@@ -210,7 +210,7 @@ class LvtopsunBmsClient {
             } else {
                 data.status = "Standby";
             }
-
+            data.soh = (data.fullAh / data.designAh) * 100.0f;
             data.isValid = true;
             return true;
 
@@ -233,6 +233,7 @@ class LvtopsunBmsClient {
         Serial.printf("🔌 Current           : %.2f A\n", data.current);
         Serial.printf("🔋 Battery Capacity  : %.2f Ah / %.2f Ah (Design: %.0f Ah)\n", data.remainingAh, data.fullAh, data.designAh);
         Serial.printf("🔄 Battery SoC       : %.1f%% (Cycle Count: %ld รอบ)\n", data.soc, data.cycleCount);
+        Serial.printf("🔄 Battery SoH       : %.1f A\n", data.soh);
         Serial.println("⚡ isCharging        : " + String(data.isCharging == 1 ? "Yes" : "No"));
         Serial.println("⚡ isDischarging     : " + String(data.isDischarging == 1 ? "Yes" : "No"));
         Serial.printf("⚡ Energy            : %.2f W\n", data.energy);

@@ -25,6 +25,7 @@ class BmsData {
 
     // Capacity & SoC
     float soc = 0.0f;
+    float soh = 0.0f;
     float remainingAh = 0.0f;
     float fullAh = 0.0f;
     float designAh = 0.0f;
@@ -54,6 +55,7 @@ class BmsData {
         obj["isCharging"] = isCharging;
         obj["isDischarging"] = isDischarging;
         obj["soc"] = soc;
+        obj["soh"] = soh;
         obj["remainingAh"] = remainingAh;
         obj["fullAh"] = fullAh;
         obj["designAh"] = designAh;
